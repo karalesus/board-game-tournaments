@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Турниры</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        header {
+            background: #4e54c8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { margin: 0; font-size: 28px; }
+        #status {
+            text-align: center;
+            padding: 12px;
+            font-weight: bold;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .connected { color: #28a745; }
+        .disconnected { color: #dc3545; }
+        #notifications {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .notification {
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: slideIn 0.6s ease-out;
+            border-left: 6px solid;
+        }
+        .REGISTERED   { background:#d4edda; border-color:#28a745; }
+        .CANCELLED    { background:#f8d7da; border-color:#dc3545; }
+        .DRAW         { background:#fff3cd; border-color:#ffc107; }
+        .RESULTS      { background:#d1ecf1; border-color:#17a2b8; }
+        .DELETED      { background:#f5c6cb; border-color:#dc3545; }
+        .UPDATED      { background:#e2e3e5; border-color:#6c757d; }
+        .SCHEDULE_CHECK { background:#e7f3ff; border-color:#007bff; }
+
+        .notification h3 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+        }
+        .notification p {
+            margin: 4px 0;
+            opacity: 0.9;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        footer {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Уведомления о турнирах</h1>
+    </header>
+    <div id="status" class="disconnected">Подключение...</div>
+    <div id="notifications"></div>
+</div>
+
+<script>
+    const statusDiv = document.getElementById('status');
+    const notificationsDiv = document.getElementById('notifications');
+    let ws;
+
+    function connect() {
+        ws = new WebSocket('ws://localhost:8083/ws/notifications');
+
+        ws.onopen = () => {
+            statusDiv.textContent = 'Подключено к системе уведомлений';
+            statusDiv.className = 'connected';
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                showNotification(data);
+            } catch (e) {
+                console.error('Ошибка парсинга JSON:', e);
+            }
+        };
+
+        ws.onclose = () => {
+            statusDiv.textContent = 'Соединение разорвано. Переподключение...';
+            statusDiv.className = 'disconnected';
+            setTimeout(connect, 3000);
+        };
+
+        ws.onerror = (err) => {
+            console.error('WebSocket ошибка:', err);
+        };
+    }
+
+    function showNotification(data) {
+        const div = document.createElement('div');
+        div.className = `notification ${data.type || 'INFO'}`;
+
+        let title = 'Уведомление';
+        let message = data.message || 'Получено событие';
+
+        switch (data.type) {
+            case 'REGISTERED':
+                title = 'Вы записаны на турнир!';
+                break;
+            case 'CANCELLED':
+                title = 'Регистрация отменена';
+                break;
+            case 'DRAW':
+                title = 'Жеребьёвка завершена!';
+                message = `Турнир "${data.tournamentName || 'без имени'}" — порядок определён`;
+                break;
+            case 'RESULTS':
+                title = 'Результаты турнира!';
+                break;
+            case 'DELETED':
+                title = 'Турнир отменён';
+                break;
+            case 'UPDATED':
+                title = 'Турнир изменён';
+                break;
+            case 'SCHEDULE_CHECK':
+                title = data.available ? 'Регистрация разрешена' : 'Регистрация отклонена';
+                message = data.reason || message;
+                break;
+        }
+
+        div.innerHTML = `
+                <h3>${title}</h3>
+                <p>${message}</p>
+                ${data.tournamentId ? `<small>Турнир ID: ${data.tournamentId}</small>` : ''}
+            `;
+
+        notificationsDiv.prepend(div);
+    }
+
+    connect();
+</script>
+</body>
+</html>
