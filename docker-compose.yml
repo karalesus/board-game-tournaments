@@ -12,7 +12,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - microservices-net
-      -
   # Инфраструктура: Брокер сообщений
   rabbitmq:
     image: rabbitmq:3.13-management
