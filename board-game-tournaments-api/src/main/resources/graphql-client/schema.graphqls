@@ -1,0 +1,89 @@
+type Tournament {
+    id: ID!
+    name: String
+    game: String
+    startTime: String
+    maxPlayers: Int
+    registeredPlayers: Int
+    description: String
+    location: String
+    createdAt: String
+    status: String
+}
+
+type PagedResponse {
+    content: [Tournament]
+    pageNumber: Int
+    pageSize: Int
+    totalElements: Int
+    totalPages: Int
+    last: Boolean
+}
+
+type User {
+    id: ID!
+    name: String
+}
+
+type DrawResult {
+    userId: ID!
+    position: Int
+}
+
+type TournamentResult {
+    tournamentId: ID!
+    results: [ResultEntry]
+}
+
+type ResultEntry {
+    userId: ID!
+    place: Int
+}
+
+type Status {
+    status: String!
+    message: String
+}
+
+input TournamentInput {
+    name: String!
+    game: String!
+    startTime: String!
+    maxPlayers: Int!
+    description: String
+    location: String
+}
+
+input UpdateTournamentInput {
+    name: String!
+    game: String!
+    startTime: String!
+    maxPlayers: Int!
+    description: String
+    location: String
+    status: String
+}
+
+input TournamentResultInput {
+    results: [ResultEntryInput]
+}
+
+input ResultEntryInput {
+    userId: ID!
+    place: Int!
+}
+
+type Query {
+    tournaments(page: Int = 1, size: Int = 20): PagedResponse
+    tournamentById(id: ID!): Tournament
+    participants(tournamentId: ID!): [User]
+    drawResults(tournamentId: ID!): [DrawResult]
+}
+
+type Mutation {
+    createTournament(input: TournamentInput!): Tournament
+    updateTournament(id: ID!, input: UpdateTournamentInput!): Tournament
+    deleteTournament(id: ID!): Status
+    draw(tournamentId: ID!): Status
+    postTournamentResults(tournamentId: ID!, input: TournamentResultInput!): TournamentResult
+}
