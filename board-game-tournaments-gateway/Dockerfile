@@ -1,31 +1,33 @@
-# Используем легковесный образ JRE 21 на базе Alpine Linux
+FROM maven:3.9-eclipse-temurin-21 AS builder
+
+WORKDIR /build
+
+COPY events-contract/pom.xml ./events-contract/
+COPY events-contract/src ./events-contract/src/
+
+COPY board-game-tournaments-api/pom.xml ./board-game-tournaments-api/
+COPY board-game-tournaments-api/src ./board-game-tournaments-api/src/
+
+COPY board-game-tournaments-gateway/pom.xml ./board-game-tournaments-gateway/
+COPY board-game-tournaments-gateway/src ./board-game-tournaments-gateway/src/
+
+RUN mvn -f events-contract/pom.xml clean install -DskipTests && \
+    mvn -f board-game-tournaments-api/pom.xml clean install -DskipTests
+
+RUN mvn -f board-game-tournaments-gateway/pom.xml clean package -DskipTests
+
 FROM eclipse-temurin:21-jre-alpine
 
-# Создаем рабочую директорию
 WORKDIR /app
 
-# Создаем пользователя 'javauser', чтобы не запускать приложение от root (Security Best Practice)
 RUN addgroup -S javauser && adduser -S javauser -G javauser
 
-# Аргумент для поиска JAR файла.
-# Мы ищем любой JAR, но исключаем *-sources.jar или *-javadoc.jar если они есть.
-# Перед сборкой еще сделайте mvn clean, в папке target будет лежать нужный нам fat-jar.
-ARG JAR_FILE=target/*.jar
+COPY --from=builder /build/board-game-tournaments-gateway/target/*.jar app.jar
 
-# Копируем JAR внутрь образа под именем app.jar
-COPY ${JAR_FILE} app.jar
-
-# Меняем владельца файла
 RUN chown javauser:javauser /app/app.jar
 
-# Переключаемся на пользователя
 USER javauser
 
-# Документируем порт (этот порт должен совпадать с server.port в properties)
 EXPOSE 8080
 
-# Запускаем приложение
-# Использование exec формы ["..."] позволяет корректно передавать сигналы остановки (SIGTERM)
 ENTRYPOINT ["java", "-jar", "app.jar"]
-
-
